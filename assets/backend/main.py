@@ -58,9 +58,8 @@ postgres_storage = PostgreSQLConversationStorage(
     password=POSTGRES_PASSWORD
 )
 
-vector_store = create_vector_store_with_config(config_manager)
-
-vector_store._initialize_store()
+# Initialize vector store as None - will be created in lifespan
+vector_store = None
 
 agent: ChatAgent | None = None
 indexing_tasks: Dict[str, str] = {}
@@ -69,10 +68,15 @@ indexing_tasks: Dict[str, str] = {}
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager for startup and shutdown tasks."""
-    global agent
-    logger.debug("Initializing PostgreSQL storage and agent...")
-    
+    global agent, vector_store
+    logger.debug("Initializing vector store, PostgreSQL storage and agent...")
+
     try:
+        # Initialize vector store
+        logger.info("Initializing vector store...")
+        vector_store = create_vector_store_with_config(config_manager)
+        logger.info("Vector store initialized successfully")
+
         await postgres_storage.init_pool()
         logger.info("PostgreSQL storage initialized successfully")
         logger.debug("Initializing ChatAgent...")
@@ -83,11 +87,11 @@ async def lifespan(app: FastAPI):
         )
         logger.info("ChatAgent initialized successfully.")
     except Exception as e:
-        logger.error(f"Failed to initialize PostgreSQL storage: {e}")
+        logger.error(f"Failed to initialize: {e}")
         raise
 
     yield
-    
+
     try:
         await postgres_storage.close()
         logger.debug("PostgreSQL storage closed successfully")

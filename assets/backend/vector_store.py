@@ -385,23 +385,32 @@ class VectorStore:
             return False
 
 
-def create_vector_store_with_config(config_manager, uri: str = "http://milvus:19530") -> VectorStore:
+def create_vector_store_with_config(config_manager, uri: str = None) -> VectorStore:
     """Factory function to create a VectorStore with ConfigManager integration.
-    
+
     Args:
         config_manager: ConfigManager instance for source management
-        uri: Milvus connection URI
-        
+        uri: Milvus connection URI (defaults to MILVUS_ADDRESS env var)
+
     Returns:
         VectorStore instance with source deletion callback
     """
+    # Load environment variables from .env file
+    load_dotenv()
+
+    # Use environment variable if uri not provided
+    if uri is None:
+        milvus_address = os.getenv("MILVUS_ADDRESS", "milvus:19530")
+        uri = f"http://{milvus_address}"
+        logger.info(f"VectorStore URI from environment: {uri} (MILVUS_ADDRESS={milvus_address})")
+
     def handle_source_deleted(source_name: str):
         """Handle source deletion by updating config."""
         config = config_manager.read_config()
         if hasattr(config, 'sources') and source_name in config.sources:
             config.sources.remove(source_name)
             config_manager.write_config(config)
-    
+
     return VectorStore(
         uri=uri,
         on_source_deleted=handle_source_deleted
