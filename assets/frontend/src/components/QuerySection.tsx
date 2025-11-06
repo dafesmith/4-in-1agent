@@ -231,9 +231,12 @@ export default function QuerySection({
           wsRef.current.close();
         }
 
-        const wsProtocol = 'ws:';
-        const wsHost = 'localhost';
-        const wsPort = '8100';
+        // Derive WebSocket URL from API URL environment variable
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8009';
+        const url = new URL(apiUrl);
+        const wsProtocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsHost = url.hostname;
+        const wsPort = url.port || '8009';
         const ws = new WebSocket(`${wsProtocol}//${wsHost}:${wsPort}/ws/chat/${currentChatId}`);
         wsRef.current = ws;
 
