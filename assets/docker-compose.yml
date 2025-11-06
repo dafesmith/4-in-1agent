@@ -30,10 +30,9 @@ services:
       - POSTGRES_DB=chatbot
       - POSTGRES_USER=chatbot_user
       - POSTGRES_PASSWORD=chatbot_secure_password_123
-      - ETCD_ENDPOINTS=milvus-etcd-cloud:2379
-      - MINIO_ADDRESS=milvus-minio-cloud:9000
-      - MILVUS_ADDRESS=milvus-standalone-cloud:19530
-      - MODELS=gpt-oss-120b
+      - MILVUS_ADDRESS=https://in03-03f9d7e9b106299.serverless.aws-eu-central-1.cloud.zilliz.com
+      - MILVUS_TOKEN=dd0e69f3863c921f1a25c98ef7efeea5c60c2a4dd22189f6fba90abb768423ec5e280ff32ae852b01b396bb1b2ca7d25fb428a7a
+      - MODELS=gpt-4-turbo,gpt-4,gpt-3.5-turbo
     networks:
       - default
       - chatbot-cloud-net

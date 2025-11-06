@@ -28,6 +28,8 @@ ENV PATH="/root/.local/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 COPY . .
 
+# Set longer timeout for downloading large packages (CUDA libraries)
+ENV UV_HTTP_TIMEOUT=300
 RUN uv sync
 
 CMD ["uv", "run", "--", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]

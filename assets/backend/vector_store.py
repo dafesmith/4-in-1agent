@@ -39,6 +39,7 @@ class VectorStore:
         self,
         embeddings=None,
         uri: str = "http://milvus:19530",
+        token: Optional[str] = None,
         on_source_deleted: Optional[Callable[[str], None]] = None
     ):
         """Initialize the vector store.
@@ -46,6 +47,7 @@ class VectorStore:
         Args:
             embeddings: Embedding model to use (defaults to OpenAI Embeddings)
             uri: Milvus connection URI
+            token: Optional token for authentication (required for Zilliz Cloud)
             on_source_deleted: Optional callback when a source is deleted
         """
         try:
@@ -60,6 +62,7 @@ class VectorStore:
                 self.embeddings = embeddings
 
             self.uri = uri
+            self.token = token
             self.on_source_deleted = on_source_deleted
             self._initialize_store()
 
@@ -79,17 +82,26 @@ class VectorStore:
             raise
     
     def _initialize_store(self):
+        # Build connection args with optional token for Zilliz Cloud
+        connection_args = {"uri": self.uri}
+        if self.token:
+            connection_args["token"] = self.token
+
         self._store = Milvus(
             embedding_function=self.embeddings,
             collection_name="context",
-            connection_args={"uri": self.uri},
+            connection_args=connection_args,
             auto_id=True
         )
 
         # Load collection into memory for searching (required by Milvus)
         try:
             from pymilvus import connections, Collection, utility
-            connections.connect(uri=self.uri)
+            # Connect with token if available
+            connect_args = {"uri": self.uri}
+            if self.token:
+                connect_args["token"] = self.token
+            connections.connect(**connect_args)
 
             if utility.has_collection("context"):
                 collection = Collection("context")
@@ -401,8 +413,17 @@ def create_vector_store_with_config(config_manager, uri: str = None) -> VectorSt
     # Use environment variable if uri not provided
     if uri is None:
         milvus_address = os.getenv("MILVUS_ADDRESS", "milvus:19530")
-        uri = f"http://{milvus_address}"
+        # Check if address already includes protocol
+        if milvus_address.startswith(("http://", "https://")):
+            uri = milvus_address
+        else:
+            uri = f"http://{milvus_address}"
         logger.info(f"VectorStore URI from environment: {uri} (MILVUS_ADDRESS={milvus_address})")
+
+    # Get token for Zilliz Cloud authentication (if provided)
+    token = os.getenv("MILVUS_TOKEN")
+    if token:
+        logger.info("Using token authentication for Zilliz Cloud")
 
     def handle_source_deleted(source_name: str):
         """Handle source deletion by updating config."""
@@ -413,5 +434,6 @@ def create_vector_store_with_config(config_manager, uri: str = None) -> VectorSt
 
     return VectorStore(
         uri=uri,
+        token=token,
         on_source_deleted=handle_source_deleted
     )
